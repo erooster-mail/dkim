@@ -3,13 +3,14 @@ mod tests {
     use crate::{
         dns, verify_email_with_resolver, DKIMError, DKIMResult, DkimPrivateKey, SignerBuilder,
     };
-    use chrono::TimeZone;
     use futures::future::BoxFuture;
     use regex::Regex;
     use rsa::pkcs1::DecodeRsaPrivateKey;
     use std::collections::HashMap;
     use std::path::Path;
     use std::sync::Arc;
+    use time::format_description::well_known::Rfc3339;
+    use time::OffsetDateTime;
 
     fn dkim_record() -> String {
         let data = std::fs::read_to_string("./test/keys/2022.txt").unwrap();
@@ -27,7 +28,8 @@ mod tests {
 
         let private_key =
             rsa::RsaPrivateKey::read_pkcs1_pem_file(Path::new("./test/keys/2022.private")).unwrap();
-        let time = chrono::Utc.ymd(2021, 1, 1).and_hms_milli(0, 0, 1, 444);
+
+        let time = OffsetDateTime::parse("2020-01-01T00:00:01.444Z", &Rfc3339).unwrap();
 
         let signer = SignerBuilder::new()
             .with_signed_headers(&["From", "Subject"])

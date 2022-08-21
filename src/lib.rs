@@ -112,10 +112,12 @@ fn validate_header(value: &str) -> Result<DKIMHeader, DKIMError> {
 
     // Check that "x=" tag isn't expired
     if let Some(expiration) = header.get_tag("x") {
-        let mut expiration =
-            chrono::NaiveDateTime::from_timestamp(expiration.parse::<i64>().unwrap_or_default(), 0);
-        expiration += chrono::Duration::minutes(SIGN_EXPIRATION_DRIFT_MINS);
-        let now = chrono::Utc::now().naive_utc();
+        let mut expiration = time::OffsetDateTime::from_unix_timestamp(
+            expiration.parse::<i64>().unwrap_or_default(),
+        )
+        .map_err(|_| DKIMError::SignatureExpired)?;
+        expiration += time::Duration::minutes(SIGN_EXPIRATION_DRIFT_MINS);
+        let now = time::OffsetDateTime::now_utc();
         if now > expiration {
             return Err(DKIMError::SignatureExpired);
         }
@@ -358,20 +360,20 @@ b=dzdVyOfAKCdLXdJOc9G2q8LoXSlEniSbav+yuU4zGeeruD00lszZ
 
     #[test]
     fn test_validate_header_expired_in_drift() {
-        let mut now = chrono::Utc::now().naive_utc();
-        now -= chrono::Duration::seconds(1);
+        let mut now = time::OffsetDateTime::now_utc();
+        now -= time::Duration::seconds(1);
 
-        let header = format!("v=1; a=rsa-sha256; d=example.net; s=brisbane; i=foo@example.net; h=From:B; bh=hash; b=hash; x={}", now.timestamp());
+        let header = format!("v=1; a=rsa-sha256; d=example.net; s=brisbane; i=foo@example.net; h=From:B; bh=hash; b=hash; x={}", now.unix_timestamp());
 
         assert!(validate_header(&header).is_ok());
     }
 
     #[test]
     fn test_validate_header_expired() {
-        let mut now = chrono::Utc::now().naive_utc();
-        now -= chrono::Duration::hours(3);
+        let mut now = time::OffsetDateTime::now_utc();
+        now -= time::Duration::hours(3);
 
-        let header = format!("v=1; a=rsa-sha256; d=example.net; s=brisbane; i=foo@example.net; h=From:B; bh=hash; b=hash; x={}", now.timestamp());
+        let header = format!("v=1; a=rsa-sha256; d=example.net; s=brisbane; i=foo@example.net; h=From:B; bh=hash; b=hash; x={}", now.unix_timestamp());
 
         assert_eq!(
             validate_header(&header).unwrap_err(),

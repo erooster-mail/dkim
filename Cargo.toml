@@ -16,7 +16,7 @@ ed25519-dalek = "1.0.1"
 mailparse = "0.13.7"
 quick-error = "2.0.1"
 nom = "7.1.0"
-chrono = { version = "0.4.19", default-features = false, features = ["clock", "std"] }
+time = {version = "0.3.13", features = ["parsing"]}
 trust-dns-resolver = "0.21"
 futures = "0.3.18"
 sha-1 = "0.10"

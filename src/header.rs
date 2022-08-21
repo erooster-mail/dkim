@@ -44,7 +44,7 @@ fn serialize(header: DKIMHeader) -> String {
 #[derive(Clone)]
 pub(crate) struct DKIMHeaderBuilder {
     header: DKIMHeader,
-    time: Option<chrono::DateTime<chrono::offset::Utc>>,
+    time: Option<time::OffsetDateTime>,
 }
 impl DKIMHeaderBuilder {
     pub(crate) fn new() -> Self {
@@ -74,17 +74,17 @@ impl DKIMHeaderBuilder {
         self.add_tag("h", &value)
     }
 
-    pub(crate) fn set_expiry(self, duration: chrono::Duration) -> Result<Self, DKIMError> {
+    pub(crate) fn set_expiry(self, duration: time::Duration) -> Result<Self, DKIMError> {
         let time = self
             .time
             .ok_or(DKIMError::BuilderError("missing require time"))?;
-        let expiry = (time + duration).timestamp();
+        let expiry = (time + duration).unix_timestamp();
         Ok(self.add_tag("x", &expiry.to_string()))
     }
 
-    pub(crate) fn set_time(mut self, time: chrono::DateTime<chrono::offset::Utc>) -> Self {
+    pub(crate) fn set_time(mut self, time: time::OffsetDateTime) -> Self {
         self.time = Some(time);
-        self.add_tag("t", &time.timestamp().to_string())
+        self.add_tag("t", &time.unix_timestamp().to_string())
     }
 
     pub(crate) fn build(mut self) -> Result<DKIMHeader, DKIMError> {
@@ -122,13 +122,14 @@ mod tests {
 
     #[test]
     fn test_dkim_header_builder_time() {
-        use chrono::TimeZone;
+        use time::format_description::well_known::Rfc3339;
+        use time::OffsetDateTime;
 
-        let time = chrono::Utc.ymd(2021, 1, 1).and_hms_milli(0, 0, 1, 444);
+        let time = OffsetDateTime::parse("2021-01-01T00:00:01.444Z", &Rfc3339).unwrap();
 
         let header = DKIMHeaderBuilder::new()
             .set_time(time)
-            .set_expiry(chrono::Duration::hours(3))
+            .set_expiry(time::Duration::hours(3))
             .unwrap()
             .build()
             .unwrap();

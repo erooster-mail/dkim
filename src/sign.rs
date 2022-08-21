@@ -10,10 +10,10 @@ pub struct SignerBuilder<'a> {
     private_key: Option<DkimPrivateKey>,
     selector: Option<&'a str>,
     signing_domain: Option<&'a str>,
-    time: Option<chrono::DateTime<chrono::offset::Utc>>,
+    time: Option<time::OffsetDateTime>,
     header_canonicalization: canonicalization::Type,
     body_canonicalization: canonicalization::Type,
-    expiry: Option<chrono::Duration>,
+    expiry: Option<time::Duration>,
 }
 
 impl<'a> SignerBuilder<'a> {
@@ -74,13 +74,13 @@ impl<'a> SignerBuilder<'a> {
     }
 
     /// Specify current time. Mostly used for testing
-    pub fn with_time(mut self, value: chrono::DateTime<chrono::offset::Utc>) -> Self {
+    pub fn with_time(mut self, value: time::OffsetDateTime) -> Self {
         self.time = Some(value);
         self
     }
 
     /// Specify a expiry duration for the signature validity
-    pub fn with_expiry(mut self, value: chrono::Duration) -> Self {
+    pub fn with_expiry(mut self, value: time::Duration) -> Self {
         self.expiry = Some(value);
         self
     }
@@ -126,9 +126,9 @@ pub struct Signer<'a> {
     signing_domain: &'a str,
     header_canonicalization: canonicalization::Type,
     body_canonicalization: canonicalization::Type,
-    expiry: Option<chrono::Duration>,
+    expiry: Option<time::Duration>,
     hash_algo: hash::HashAlgo,
-    time: Option<chrono::DateTime<chrono::offset::Utc>>,
+    time: Option<time::OffsetDateTime>,
 }
 
 /// DKIM signer. Use the [SignerBuilder] to build an instance.
@@ -177,7 +177,7 @@ impl<'a> Signer<'a> {
     }
 
     fn dkim_header_builder(&self, body_hash: &str) -> Result<DKIMHeaderBuilder, DKIMError> {
-        let now = chrono::offset::Utc::now();
+        let now = time::OffsetDateTime::now_utc();
         let hash_algo = match self.hash_algo {
             hash::HashAlgo::RsaSha1 => "rsa-sha1",
             hash::HashAlgo::RsaSha256 => "rsa-sha256",
@@ -244,9 +244,9 @@ impl<'a> Signer<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
     use rsa::pkcs1::DecodeRsaPrivateKey;
     use std::{fs, path::Path};
+    use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
     #[test]
     fn test_sign_rsa() {
@@ -262,7 +262,7 @@ Hello Alice
 
         let private_key =
             rsa::RsaPrivateKey::read_pkcs1_pem_file(Path::new("./test/keys/2022.private")).unwrap();
-        let time = chrono::Utc.ymd(2021, 1, 1).and_hms_milli(0, 0, 1, 444);
+        let time = OffsetDateTime::parse("2021-01-01T00:00:01.444Z", &Rfc3339).unwrap();
 
         let signer = SignerBuilder::new()
             .with_signed_headers(&["From", "Subject"])
@@ -307,7 +307,7 @@ Joe."#
             secret: secret_key,
         };
 
-        let time = chrono::Utc.ymd(2018, 6, 10).and_hms_milli(13, 38, 29, 444);
+        let time = OffsetDateTime::parse("2018-06-10T13:38:29.444Z", &Rfc3339).unwrap();
 
         let signer = SignerBuilder::new()
             .with_signed_headers(&[
