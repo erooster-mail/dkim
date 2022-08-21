@@ -1,5 +1,6 @@
 use crate::{parser, DKIMError};
 use indexmap::map::IndexMap;
+use std::fmt::Write;
 
 pub(crate) const HEADER: &str = "DKIM-Signature";
 pub(crate) const REQUIRED_TAGS: &[&str] = &["v", "a", "b", "bh", "d", "h", "s"];
@@ -32,7 +33,7 @@ fn serialize(header: DKIMHeader) -> String {
     let mut out = "".to_owned();
 
     for (key, tag) in &header.tags {
-        out += &format!("{}={};", key, tag.value);
+        write!(out, "{}={};", key, tag.value).expect("adding tag to header");
         out += " ";
     }
 

@@ -1,8 +1,9 @@
 // Inspired from https://docs.rs/dkim/latest/src/dkim/canonicalization.rs.html
 use crate::bytes;
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Default)]
 pub enum Type {
+    #[default]
     Simple,
     Relaxed,
 }
@@ -78,7 +79,7 @@ pub(crate) fn canonicalize_body_relaxed(body: &[u8]) -> Vec<u8> {
 // https://datatracker.ietf.org/doc/html/rfc6376#section-3.4.1
 pub(crate) fn canonicalize_header_simple(key: &str, value: &[u8]) -> Vec<u8> {
     let mut out = Vec::new();
-    out.extend_from_slice(&key.as_bytes());
+    out.extend_from_slice(key.as_bytes());
     out.extend_from_slice(b": ");
     out.extend_from_slice(value);
     out.extend_from_slice(b"\r\n");
@@ -93,7 +94,7 @@ pub(crate) fn canonicalize_header_relaxed(key: &str, value: &[u8]) -> Vec<u8> {
     let value = canonicalize_header_value_relaxed(value);
 
     let mut out = Vec::new();
-    out.extend_from_slice(&key.as_bytes());
+    out.extend_from_slice(key.as_bytes());
     out.extend_from_slice(b":");
     out.extend_from_slice(&value);
     out.extend_from_slice(b"\r\n");

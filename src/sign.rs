@@ -4,6 +4,7 @@ use crate::header::DKIMHeaderBuilder;
 use crate::{canonicalization, hash, DKIMError, DkimPrivateKey, HEADER};
 
 /// Builder for the Signer
+#[derive(Default)]
 pub struct SignerBuilder<'a> {
     signed_headers: Option<&'a [&'a str]>,
     private_key: Option<DkimPrivateKey>,
@@ -25,7 +26,6 @@ impl<'a> SignerBuilder<'a> {
             signing_domain: None,
             expiry: None,
             time: None,
-
             header_canonicalization: canonicalization::Type::Simple,
             body_canonicalization: canonicalization::Type::Simple,
         }
@@ -103,7 +103,7 @@ impl<'a> SignerBuilder<'a> {
             signed_headers: self
                 .signed_headers
                 .ok_or(BuilderError("missing required signed headers"))?,
-            private_key: private_key,
+            private_key,
             selector: self
                 .selector
                 .ok_or(BuilderError("missing required selector"))?,
@@ -113,7 +113,7 @@ impl<'a> SignerBuilder<'a> {
             header_canonicalization: self.header_canonicalization,
             body_canonicalization: self.body_canonicalization,
             expiry: self.expiry,
-            hash_algo: hash_algo,
+            hash_algo,
             time: self.time,
         })
     }
@@ -187,7 +187,7 @@ impl<'a> Signer<'a> {
         let mut builder = DKIMHeaderBuilder::new()
             .add_tag("v", "1")
             .add_tag("a", hash_algo)
-            .add_tag("d", &self.signing_domain)
+            .add_tag("d", self.signing_domain)
             .add_tag("s", self.selector)
             .add_tag(
                 "c",
@@ -205,7 +205,7 @@ impl<'a> Signer<'a> {
         if let Some(time) = self.time {
             builder = builder.set_time(time);
         } else {
-            builder = builder.set_time(now.into());
+            builder = builder.set_time(now);
         }
 
         Ok(builder)
@@ -291,7 +291,7 @@ Hi.
 We lost the game.  Are you hungry yet?
 
 Joe."#
-            .replace("\n", "\r\n");
+            .replace('\n', "\r\n");
         let email = mailparse::parse_mail(raw_email.as_bytes()).unwrap();
 
         let file_content = fs::read("./test/keys/ed.private").unwrap();

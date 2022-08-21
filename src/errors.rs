@@ -5,7 +5,7 @@ pub enum Status {
 }
 
 quick_error! {
-    #[derive(Debug, PartialEq, Clone)]
+    #[derive(Debug, PartialEq, Eq, Clone)]
     /// DKIM errors
     pub enum DKIMError {
         UnsupportedHashAlgorithm(value: String) {
