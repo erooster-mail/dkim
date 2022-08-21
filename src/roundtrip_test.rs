@@ -11,10 +11,6 @@ mod tests {
     use std::path::Path;
     use std::sync::Arc;
 
-    fn test_logger() -> slog::Logger {
-        slog::Logger::root(slog::Discard, slog::o!())
-    }
-
     fn dkim_record() -> String {
         let data = std::fs::read_to_string("./test/keys/2022.txt").unwrap();
         let re = Regex::new(r#"".*""#).unwrap();
@@ -31,7 +27,6 @@ mod tests {
 
         let private_key =
             rsa::RsaPrivateKey::read_pkcs1_pem_file(Path::new("./test/keys/2022.private")).unwrap();
-        let logger = test_logger();
         let time = chrono::Utc.ymd(2021, 1, 1).and_hms_milli(0, 0, 1, 444);
 
         let signer = SignerBuilder::new()
@@ -39,7 +34,6 @@ mod tests {
             .unwrap()
             .with_private_key(DkimPrivateKey::Rsa(private_key))
             .with_selector("2022")
-            .with_logger(&logger)
             .with_signing_domain(domain)
             .with_time(time)
             .build()
@@ -54,10 +48,9 @@ mod tests {
         from_domain: &str,
         raw_email: &str,
     ) -> DKIMResult {
-        let logger = test_logger();
         let email = mailparse::parse_mail(raw_email.as_bytes()).unwrap();
 
-        verify_email_with_resolver(&logger, from_domain, &email, resolver)
+        verify_email_with_resolver(from_domain, &email, resolver)
             .await
             .unwrap()
     }

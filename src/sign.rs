@@ -12,7 +12,6 @@ pub struct SignerBuilder<'a> {
     time: Option<chrono::DateTime<chrono::offset::Utc>>,
     header_canonicalization: canonicalization::Type,
     body_canonicalization: canonicalization::Type,
-    logger: Option<&'a slog::Logger>,
     expiry: Option<chrono::Duration>,
 }
 
@@ -23,7 +22,6 @@ impl<'a> SignerBuilder<'a> {
             signed_headers: None,
             private_key: None,
             selector: None,
-            logger: None,
             signing_domain: None,
             expiry: None,
             time: None,
@@ -75,12 +73,6 @@ impl<'a> SignerBuilder<'a> {
         self
     }
 
-    /// Specify a logger
-    pub fn with_logger(mut self, logger: &'a slog::Logger) -> Self {
-        self.logger = Some(logger);
-        self
-    }
-
     /// Specify current time. Mostly used for testing
     pub fn with_time(mut self, value: chrono::DateTime<chrono::offset::Utc>) -> Self {
         self.time = Some(value);
@@ -115,7 +107,6 @@ impl<'a> SignerBuilder<'a> {
             selector: self
                 .selector
                 .ok_or(BuilderError("missing required selector"))?,
-            logger: self.logger.ok_or(BuilderError("missing required logger"))?,
             signing_domain: self
                 .signing_domain
                 .ok_or(BuilderError("missing required logger"))?,
@@ -135,7 +126,6 @@ pub struct Signer<'a> {
     signing_domain: &'a str,
     header_canonicalization: canonicalization::Type,
     body_canonicalization: canonicalization::Type,
-    logger: &'a slog::Logger,
     expiry: Option<chrono::Duration>,
     hash_algo: hash::HashAlgo,
     time: Option<chrono::DateTime<chrono::offset::Utc>>,
@@ -242,7 +232,6 @@ impl<'a> Signer<'a> {
         let signed_headers = dkim_header.get_required_tag("h");
 
         hash::compute_headers_hash(
-            self.logger,
             canonicalization,
             &signed_headers,
             self.hash_algo.clone(),
@@ -259,10 +248,6 @@ mod tests {
     use rsa::pkcs1::DecodeRsaPrivateKey;
     use std::{fs, path::Path};
 
-    fn test_logger() -> slog::Logger {
-        slog::Logger::root(slog::Discard, slog::o!())
-    }
-
     #[test]
     fn test_sign_rsa() {
         let email = mailparse::parse_mail(
@@ -277,7 +262,6 @@ Hello Alice
 
         let private_key =
             rsa::RsaPrivateKey::read_pkcs1_pem_file(Path::new("./test/keys/2022.private")).unwrap();
-        let logger = test_logger();
         let time = chrono::Utc.ymd(2021, 1, 1).and_hms_milli(0, 0, 1, 444);
 
         let signer = SignerBuilder::new()
@@ -285,7 +269,6 @@ Hello Alice
             .unwrap()
             .with_private_key(DkimPrivateKey::Rsa(private_key))
             .with_selector("s20")
-            .with_logger(&logger)
             .with_signing_domain("example.com")
             .with_time(time)
             .build()
@@ -324,7 +307,6 @@ Joe."#
             secret: secret_key,
         };
 
-        let logger = test_logger();
         let time = chrono::Utc.ymd(2018, 6, 10).and_hms_milli(13, 38, 29, 444);
 
         let signer = SignerBuilder::new()
@@ -343,7 +325,6 @@ Joe."#
             .with_body_canonicalization(canonicalization::Type::Relaxed)
             .with_header_canonicalization(canonicalization::Type::Relaxed)
             .with_selector("brisbane")
-            .with_logger(&logger)
             .with_signing_domain("football.example.com")
             .with_time(time)
             .build()
