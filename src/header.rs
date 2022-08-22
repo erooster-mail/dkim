@@ -33,7 +33,7 @@ fn serialize(header: DKIMHeader) -> String {
     let mut out = "".to_owned();
 
     for (key, tag) in &header.tags {
-        write!(out, "{}={};  ", key, tag.value).expect("adding tag to header");
+        write!(out, "{}={}; ", key, tag.value).expect("adding tag to header");
     }
 
     out.pop(); // remove trailing whitespace
