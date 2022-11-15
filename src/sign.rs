@@ -1,4 +1,7 @@
 use ed25519_dalek::ExpandedSecretKey;
+use rsa::PaddingScheme;
+use sha1::Sha1;
+use sha2::Sha256;
 
 use crate::header::DKIMHeaderBuilder;
 use crate::{canonicalization, hash, DKIMError, DkimPrivateKey, HEADER};
@@ -144,17 +147,12 @@ impl<'a> Signer<'a> {
         let signature = match &self.private_key {
             DkimPrivateKey::Rsa(private_key) => private_key
                 .sign(
-                    rsa::PaddingScheme::PKCS1v15Sign {
-                        hash: Some(match &self.hash_algo {
-                            hash::HashAlgo::RsaSha1 => rsa::hash::Hash::SHA1,
-                            hash::HashAlgo::RsaSha256 => rsa::hash::Hash::SHA2_256,
-                            hash => {
-                                return Err(DKIMError::UnsupportedHashAlgorithm(format!(
-                                    "{:?}",
-                                    hash
-                                )))
-                            }
-                        }),
+                    match &self.hash_algo {
+                        hash::HashAlgo::RsaSha1 => PaddingScheme::new_pkcs1v15_sign::<Sha1>(),
+                        hash::HashAlgo::RsaSha256 => PaddingScheme::new_pkcs1v15_sign::<Sha256>(),
+                        hash => {
+                            return Err(DKIMError::UnsupportedHashAlgorithm(format!("{:?}", hash)))
+                        }
                     },
                     &header_hash,
                 )

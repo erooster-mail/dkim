@@ -1,9 +1,12 @@
 // Implementation of DKIM: https://datatracker.ietf.org/doc/html/rfc6376
 
 use indexmap::map::IndexMap;
+use rsa::PaddingScheme;
 use rsa::PublicKey;
 use rsa::RsaPrivateKey;
 use rsa::RsaPublicKey;
+use sha1::Sha1;
+use sha2::Sha256;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tracing::debug;
@@ -136,14 +139,10 @@ fn verify_signature(
     Ok(match public_key {
         DkimPublicKey::Rsa(public_key) => public_key
             .verify(
-                rsa::PaddingScheme::PKCS1v15Sign {
-                    hash: Some(match hash_algo {
-                        hash::HashAlgo::RsaSha1 => rsa::hash::Hash::SHA1,
-                        hash::HashAlgo::RsaSha256 => rsa::hash::Hash::SHA2_256,
-                        hash => {
-                            return Err(DKIMError::UnsupportedHashAlgorithm(format!("{:?}", hash)))
-                        }
-                    }),
+                match hash_algo {
+                    hash::HashAlgo::RsaSha1 => PaddingScheme::new_pkcs1v15_sign::<Sha1>(),
+                    hash::HashAlgo::RsaSha256 => PaddingScheme::new_pkcs1v15_sign::<Sha256>(),
+                    hash => return Err(DKIMError::UnsupportedHashAlgorithm(format!("{:?}", hash))),
                 },
                 &header_hash,
                 &signature,
